@@ -34,7 +34,7 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .  
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "::setOutput name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
   Continuous-Deployment:
     needs: Continuous-Integration
@@ -55,6 +55,17 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         with:
           mask-password: true
+
+      - name: Stop old container on port 5000 (if running)
+        run: |
+          CONTAINER_ID=$(docker ps -q --filter "publish=5000")
+          if [ ! -z "$CONTAINER_ID" ]; then
+            echo "Stopping container $CONTAINER_ID using port 5000..."
+            docker stop $CONTAINER_ID
+            docker rm $CONTAINER_ID
+          else
+            echo "No container using port 5000."
+          fi
 
       - name: Run Docker Image to serve users
         run: |
